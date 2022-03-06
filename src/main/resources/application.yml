@@ -1,0 +1,12 @@
+spring:
+  main:
+    web-application-type: none
+  datasource:
+    mysql:
+      jdbc-url: jdbc:mariadb://localhost:3306/zzangho
+      driver-class-name: org.mariadb.jdbc.Driver
+      username: root
+      password: 1q2w3e4r5t
+#  batch:
+#    job:
+#      names: ${job.name:NONE}
