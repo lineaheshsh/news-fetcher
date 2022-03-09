@@ -9,7 +9,6 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
-import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.batch.item.support.SynchronizedItemStreamWriter;
@@ -17,6 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
@@ -29,16 +29,28 @@ public class NewsConfig {
     private final EntityManagerFactory entityManagerFactory;
     private final @Qualifier("springBatchDB")
     DataSource dataSource;
-    private final TaskExecutor taskExecutor;
+//    private final TaskExecutor taskExecutor;
 
-    private int chunkSize = 1000;
+    private int chunkSize = 5000;
 
-    public NewsConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory, EntityManagerFactory entityManagerFactory, DataSource dataSource, TaskExecutor taskExecutor) {
+//    public NewsConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory, EntityManagerFactory entityManagerFactory, DataSource dataSource, TaskExecutor taskExecutor) {
+    public NewsConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory, EntityManagerFactory entityManagerFactory, DataSource dataSource) {
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
         this.entityManagerFactory = entityManagerFactory;
         this.dataSource = dataSource;
-        this.taskExecutor = taskExecutor;
+//        this.taskExecutor = taskExecutor;
+    }
+
+    @Bean(name = "newsTaskPool")
+    public TaskExecutor executor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor(); // (2)
+        executor.setCorePoolSize(8);
+        executor.setMaxPoolSize(8);
+        executor.setThreadNamePrefix("multi-thread-");
+        executor.setWaitForTasksToCompleteOnShutdown(Boolean.TRUE);
+        executor.initialize();
+        return executor;
     }
 
     @Bean
@@ -56,8 +68,9 @@ public class NewsConfig {
         return stepBuilderFactory.get("newsStep")
                 .<News, News>chunk(chunkSize)
                 .reader(itemReader())
+//                .processor(new NewsProcessor())
                 .writer(itemWriter())
-                .taskExecutor(taskExecutor)
+                .taskExecutor(executor())
                 .throttleLimit(8)
                 .build();
     }
@@ -75,6 +88,7 @@ public class NewsConfig {
     }
 
     private SynchronizedItemStreamWriter<News> itemWriter() throws Exception {
+        System.out.println("itemWriter : " + Thread.currentThread().getId());
         SynchronizedItemStreamWriter<News> itemStreamWriter = new SynchronizedItemStreamWriter<>();
         itemStreamWriter.setDelegate(new BulkFileWriter());
 

@@ -9,7 +9,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class NewsFetcherApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(NewsFetcherApplication.class, args);
+		System.exit(SpringApplication.exit(SpringApplication.run(NewsFetcherApplication.class, args)));
 	}
 
 }
