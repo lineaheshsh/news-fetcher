@@ -1,5 +1,6 @@
 package com.zzangho.newsfetcher.news.job;
 
+import com.zzangho.newsfetcher.common.Constants;
 import com.zzangho.newsfetcher.news.item.BulkFileWriter;
 import com.zzangho.newsfetcher.news.listener.NewsJobExecutionListener;
 import com.zzangho.newsfetcher.news.model.News;
@@ -29,48 +30,47 @@ public class NewsConfig {
     private final EntityManagerFactory entityManagerFactory;
     private final @Qualifier("springBatchDB")
     DataSource dataSource;
-//    private final TaskExecutor taskExecutor;
+    private final TaskExecutor taskExecutor;
 
     private int chunkSize = 5000;
 
-//    public NewsConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory, EntityManagerFactory entityManagerFactory, DataSource dataSource, TaskExecutor taskExecutor) {
-    public NewsConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory, EntityManagerFactory entityManagerFactory, DataSource dataSource) {
+    public NewsConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory, EntityManagerFactory entityManagerFactory, DataSource dataSource, TaskExecutor taskExecutor) {
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
         this.entityManagerFactory = entityManagerFactory;
         this.dataSource = dataSource;
-//        this.taskExecutor = taskExecutor;
+        this.taskExecutor = taskExecutor;
     }
 
-    @Bean(name = "newsTaskPool")
-    public TaskExecutor executor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor(); // (2)
-        executor.setCorePoolSize(8);
-        executor.setMaxPoolSize(8);
-        executor.setThreadNamePrefix("multi-thread-");
-        executor.setWaitForTasksToCompleteOnShutdown(Boolean.TRUE);
-        executor.initialize();
-        return executor;
-    }
-
+    /**
+     * News JOB
+     *
+     * @return
+     * @throws Exception
+     */
     @Bean
     public Job newsJob() throws Exception {
-        log.info("newsJob start");
-        return jobBuilderFactory.get("newsJob")
+        return jobBuilderFactory.get(Constants.NEWS_JOB + "Job")
                 .incrementer(new RunIdIncrementer())
                 .start(newsStep())
                 .listener(new NewsJobExecutionListener())
                 .build();
     }
 
+    /**
+     * News Job Step
+     * -. Reader : MariaDB에서 News 데이터 읽어옴
+     * -. Writer : News 데이터 bulk.json파일로 출력
+     * @return
+     * @throws Exception
+     */
     @Bean
     public Step newsStep() throws Exception {
-        return stepBuilderFactory.get("newsStep")
+        return stepBuilderFactory.get(Constants.NEWS_JOB + "Step")
                 .<News, News>chunk(chunkSize)
                 .reader(itemReader())
-//                .processor(new NewsProcessor())
                 .writer(itemWriter())
-                .taskExecutor(executor())
+                .taskExecutor(taskExecutor)
                 .throttleLimit(8)
                 .build();
     }
@@ -87,8 +87,12 @@ public class NewsConfig {
         return jpaPagingItemReader;
     }
 
+    /**
+     * Thread safe
+     * @return
+     * @throws Exception
+     */
     private SynchronizedItemStreamWriter<News> itemWriter() throws Exception {
-        System.out.println("itemWriter : " + Thread.currentThread().getId());
         SynchronizedItemStreamWriter<News> itemStreamWriter = new SynchronizedItemStreamWriter<>();
         itemStreamWriter.setDelegate(new BulkFileWriter());
 

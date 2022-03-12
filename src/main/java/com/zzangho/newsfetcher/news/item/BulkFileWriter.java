@@ -1,8 +1,8 @@
 package com.zzangho.newsfetcher.news.item;
 
+import com.zzangho.newsfetcher.common.Constants;
 import com.zzangho.newsfetcher.news.model.News;
 import lombok.extern.slf4j.Slf4j;
-import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamException;
@@ -16,19 +16,19 @@ import java.util.List;
 
 @Slf4j
 public class BulkFileWriter extends SynchronizedItemStreamWriter<News> implements ItemStreamWriter<News> {
-    private int cnt = 0;
+    private FileWriter file;
     private File bulkDir;
-    private String file_prefix = "news_bulk";
+
     @Override
     public void open(ExecutionContext executionContext) throws ItemStreamException {
-        bulkDir = new File("bulk");
-        if (!bulkDir.exists()) bulkDir.mkdir();
-        else {
-            File[] bulkFiles = bulkDir.listFiles();
+        try {
+            bulkDir = new File("bulk");
+            if (!bulkDir.exists()) bulkDir.mkdir();
 
-            for (File file : bulkFiles) {
-                file.delete();
-            }
+            file = new FileWriter("bulk/" + Constants.BULK_FILE);
+        } catch (IOException e) {
+            log.error("File is not create");
+            e.printStackTrace();
         }
     }
 
@@ -39,49 +39,34 @@ public class BulkFileWriter extends SynchronizedItemStreamWriter<News> implement
 
     @Override
     public void close() throws ItemStreamException {
+        try {
+            file.flush();
+            file.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
-    public void write(List<? extends News> items) {
+    public void write(List<? extends News> items) throws Exception{
 
-        try(FileWriter file = new FileWriter("bulk/news_bulk_" + cnt++ + ".json")) {
+        for (int i = 0; i < items.size(); i++) {
 
-            for (int i = 0; i < items.size(); i++) {
-                JSONObject rootJsonObject = new JSONObject();
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put(Constants.CONTENTS_ID, items.get(i).getContents_id());
+            jsonObject.put(Constants.DOMAIN, items.get(i).getDomain());
+            jsonObject.put(Constants.CATEGORY_NM, items.get(i).getCategory_nm());
+            jsonObject.put(Constants.TITLE, items.get(i).getTitle());
+            jsonObject.put(Constants.CONTENTS, items.get(i).getContents());
+            jsonObject.put(Constants.WRITER, items.get(i).getWriter());
+            jsonObject.put(Constants.DATE, items.get(i).getDate());
+            jsonObject.put(Constants.AMPM, items.get(i).getAmpm());
+            jsonObject.put(Constants.TIME, items.get(i).getTime());
+            jsonObject.put(Constants.COMPANY, items.get(i).getCompany());
+            jsonObject.put(Constants.URL, items.get(i).getUrl());
+            jsonObject.put(Constants.UDT_DT, items.get(i).getUdt_dt());
 
-                JSONObject indexJsonObject = new JSONObject();
-                indexJsonObject.put("_index", "news");
-                indexJsonObject.put("_type", "_doc");
-                indexJsonObject.put("_id", items.get(i).getContents_id());
-                rootJsonObject.put("index", indexJsonObject);
-
-                file.write(rootJsonObject.toString() + "\n");
-
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("contents_id", items.get(i).getContents_id());
-                jsonObject.put("domain", items.get(i).getDomain());
-                jsonObject.put("category_nm", items.get(i).getCategory_nm());
-                jsonObject.put("title", items.get(i).getTitle());
-                jsonObject.put("contents", items.get(i).getContents());
-                jsonObject.put("writer", items.get(i).getWriter());
-                jsonObject.put("date", items.get(i).getDate());
-                jsonObject.put("ampm", items.get(i).getAmpm());
-                jsonObject.put("time", items.get(i).getTime());
-                jsonObject.put("company", items.get(i).getCompany());
-                jsonObject.put("url", items.get(i).getUrl());
-                jsonObject.put("udt_dt", items.get(i).getUdt_dt());
-
-                file.write(jsonObject.toString() + "\n");
-                rootJsonObject = null;
-                indexJsonObject = null;
-                jsonObject = null;
-            }
-        } catch (IOException e) {
-            log.error("File is not create");
-            e.printStackTrace();
-        } catch (JSONException e) {
-            log.error("parsing error");
-            e.printStackTrace();
+            file.write(jsonObject + "\n");
         }
     }
 }
