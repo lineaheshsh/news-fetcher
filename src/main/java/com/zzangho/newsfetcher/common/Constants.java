@@ -14,6 +14,5 @@ public class Constants {
     public final static String URL = "url";
     public final static String UDT_DT = "udt_dt";
 
-    public final static String BULK_FILE = "news_bulk.json";
     public final static String NEWS_JOB = "news";
 }

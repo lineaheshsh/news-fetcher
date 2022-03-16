@@ -14,6 +14,7 @@ import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.batch.item.support.SynchronizedItemStreamWriter;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
@@ -33,6 +34,12 @@ public class NewsConfig {
     private final TaskExecutor taskExecutor;
 
     private int chunkSize = 5000;
+
+    @Value("${bulk.dir}")
+    private String dir;
+
+    @Value("${bulk.file-name}")
+    private String fileName;
 
     public NewsConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory, EntityManagerFactory entityManagerFactory, DataSource dataSource, TaskExecutor taskExecutor) {
         this.jobBuilderFactory = jobBuilderFactory;
@@ -69,7 +76,7 @@ public class NewsConfig {
         return stepBuilderFactory.get(Constants.NEWS_JOB + "Step")
                 .<News, News>chunk(chunkSize)
                 .reader(itemReader())
-                .writer(itemWriter())
+                .writer(itemWriter(dir, fileName))
                 .taskExecutor(taskExecutor)
                 .throttleLimit(8)
                 .build();
@@ -92,9 +99,9 @@ public class NewsConfig {
      * @return
      * @throws Exception
      */
-    private SynchronizedItemStreamWriter<News> itemWriter() throws Exception {
+    private SynchronizedItemStreamWriter<News> itemWriter(String dir, String fileName) throws Exception {
         SynchronizedItemStreamWriter<News> itemStreamWriter = new SynchronizedItemStreamWriter<>();
-        itemStreamWriter.setDelegate(new BulkFileWriter());
+        itemStreamWriter.setDelegate(new BulkFileWriter(dir, fileName));
 
         itemStreamWriter.afterPropertiesSet();
         return itemStreamWriter;

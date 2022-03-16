@@ -7,6 +7,10 @@ spring:
       driver-class-name: org.mariadb.jdbc.Driver
       username: root
       password: 1q2w3e4r5t
+
+bulk:
+  dir: /Users/zzangho/data/bulk/news
+  file-name: news_bulk.json
 #  batch:
 #    job:
 #      names: ${job.name:NONE}

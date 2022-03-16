@@ -8,6 +8,9 @@ import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamException;
 import org.springframework.batch.item.ItemStreamWriter;
 import org.springframework.batch.item.support.SynchronizedItemStreamWriter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -19,13 +22,22 @@ public class BulkFileWriter extends SynchronizedItemStreamWriter<News> implement
     private FileWriter file;
     private File bulkDir;
 
+    private String dir;
+    private String fileName;
+
+    public BulkFileWriter(String dir, String fileName) {
+        this.dir = dir;
+        this.fileName = fileName;
+    }
+
     @Override
     public void open(ExecutionContext executionContext) throws ItemStreamException {
         try {
-            bulkDir = new File("bulk");
+            System.out.println(dir + " , " + fileName);
+            bulkDir = new File(dir);
             if (!bulkDir.exists()) bulkDir.mkdir();
 
-            file = new FileWriter("bulk/" + Constants.BULK_FILE);
+            file = new FileWriter(dir + "/" + fileName);
         } catch (IOException e) {
             log.error("File is not create");
             e.printStackTrace();
